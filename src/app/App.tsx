@@ -6,6 +6,29 @@ import { Button, Input } from './components/shared-ui';
 import { LogIn, AlertCircle } from 'lucide-react';
 import axios from 'axios';
 
+// Automatically refresh token on 401 Unauthorized errors
+axios.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const originalRequest = error.config;
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      originalRequest._retry = true;
+      try {
+        // Call the backend refresh-token API
+        await axios.post('/api/auth/refresh-token');
+        // Retry the original request after successful refresh
+        return axios(originalRequest);
+      } catch (err) {
+        // Refresh failed (e.g. refresh token expired), clear session
+        delete axios.defaults.headers.common['X-User-Id'];
+        delete axios.defaults.headers.common['X-User-Role'];
+        window.location.reload();
+      }
+    }
+    return Promise.reject(error);
+  }
+);
+
 export interface AuthUser {
   id: string;
   name: string;
@@ -110,7 +133,7 @@ export default function App() {
             <form onSubmit={handleLogin} className="space-y-5">
               <Input 
                 label="User ID" 
-                placeholder="e.g. ADMIN01, EX1010, SE123001" 
+                placeholder="e.g. admin, lecturer1, student1" 
                 value={loginId}
                 onChange={(e: any) => setLoginId(e.target.value)}
                 required 
@@ -129,11 +152,11 @@ export default function App() {
             </form>
             
             <div className="mt-10 pt-6 border-t border-gray-100">
-              <p className="text-xs text-slate-400 font-bold mb-4 uppercase tracking-wider text-center lg:text-left">Demo Accounts</p>
+              <p className="text-xs text-slate-400 font-bold mb-4 uppercase tracking-wider text-center lg:text-left">Demo Accounts (Pass: 123456)</p>
               <div className="flex flex-wrap gap-2 justify-center lg:justify-start text-xs">
-                <span className="px-3 py-1.5 bg-slate-50 border border-slate-200 text-slate-700 rounded-lg"><b>ADMIN01</b> <span className="text-slate-400">Admin</span></span>
-                <span className="px-3 py-1.5 bg-slate-50 border border-slate-200 text-slate-700 rounded-lg"><b>EX1010</b> <span className="text-slate-400">Examiner</span></span>
-                <span className="px-3 py-1.5 bg-slate-50 border border-slate-200 text-slate-700 rounded-lg"><b>SE123001</b> <span className="text-slate-400">Student</span></span>
+                <span className="px-3 py-1.5 bg-slate-50 border border-slate-200 text-slate-700 rounded-lg"><b>admin</b> <span className="text-slate-400">Admin</span></span>
+                <span className="px-3 py-1.5 bg-slate-50 border border-slate-200 text-slate-700 rounded-lg"><b>lecturer1</b> <span className="text-slate-400">Examiner</span></span>
+                <span className="px-3 py-1.5 bg-slate-50 border border-slate-200 text-slate-700 rounded-lg"><b>student1</b> <span className="text-slate-400">Student</span></span>
               </div>
             </div>
           </div>

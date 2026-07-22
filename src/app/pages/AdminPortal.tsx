@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { 
   Settings, Users, FileCode, CheckCircle, BarChart3, Database, ShieldAlert, LogOut, Plus, Search, HelpCircle, User, Bell,
-  Terminal, XCircle, Download, Upload, ChevronLeft, ChevronRight, FileSpreadsheet, Lock, CheckCircle2, FileUp, ListChecks, FolderUp, Server
+  Terminal, XCircle, Download, Upload, ChevronLeft, ChevronRight, FileSpreadsheet, Lock, CheckCircle2, FileUp, ListChecks, FolderUp, Server, RefreshCw
 } from 'lucide-react';
 import { Button, Input, TableSkeleton, TableEmptyState, Badge } from '../components/shared-ui';
 import { NotificationDropdown } from '../components/NotificationDropdown';
@@ -20,18 +20,35 @@ export const AdminPortal = ({ currentUser }: { currentUser: any }) => {
     requiredProjects: [] as { pattern: string; mustExist: boolean }[],
     requiredFiles: [] as { pattern: string; mustExist: boolean }[]
   });
+  const [allRubrics, setAllRubrics] = useState<any[]>([]);
+  const [selectedRubricCode, setSelectedRubricCode] = useState('PRN232_DEFAULT');
   const [isSavingRubric, setIsSavingRubric] = useState(false);
   const [rubricMessage, setRubricMessage] = useState('');
 
-  // Fetch rubric on load
+  // Fetch all rubrics when entering tab
+  useEffect(() => {
+    if (activeTab === 'rubrics') {
+      const fetchAllRubrics = async () => {
+        try {
+          const res = await axios.get('/api/Grading/rubrics');
+          setAllRubrics(res.data);
+        } catch (e) {
+          console.error('Error fetching all rubrics', e);
+        }
+      };
+      fetchAllRubrics();
+    }
+  }, [activeTab]);
+
+  // Fetch specific rubric when selection changes
   useEffect(() => {
     if (activeTab === 'rubrics') {
       const fetchRubric = async () => {
         try {
-          const res = await axios.get(`/api/Grading/rubrics/PRN232_DEFAULT`);
+          const res = await axios.get(`/api/Grading/rubrics/${selectedRubricCode}`);
           if (res.data) {
              setRubric({
-                examCode: res.data.examCode || 'PRN232_DEFAULT',
+                examCode: res.data.examCode || selectedRubricCode,
                maxScore: res.data.maxScore || 10.0,
                solutionPattern: res.data.solutionPattern || '',
                forbidHardcodedConnectionString: res.data.forbidHardcodedConnectionString,
@@ -40,13 +57,30 @@ export const AdminPortal = ({ currentUser }: { currentUser: any }) => {
                requiredFiles: res.data.requiredFiles || []
             });
           }
-        } catch (error) {
-          console.error("Error fetching rubric:", error);
+        } catch (error: any) {
+          if (error.response?.status === 404) {
+            console.info(`Rubric ${selectedRubricCode} not found. Loading empty template.`);
+            setRubricMessage(`New template for ${selectedRubricCode} loaded.`);
+            setTimeout(() => setRubricMessage(''), 3000);
+          } else {
+            console.error("Error fetching rubric:", error);
+          }
+          // If not found, reset to a new empty template for the selected code
+          setRubric({
+             examCode: selectedRubricCode,
+             maxScore: 10.0,
+             solutionPattern: '',
+             forbidHardcodedConnectionString: true,
+             deductionPointsPerNamingError: 1.0,
+             requiredProjects: [],
+             requiredFiles: []
+          });
         }
       };
+      
       fetchRubric();
     }
-  }, [activeTab]);
+  }, [activeTab, selectedRubricCode]);
 
   const handleSaveRubric = async () => {
     setIsSavingRubric(true);
@@ -123,7 +157,7 @@ export const AdminPortal = ({ currentUser }: { currentUser: any }) => {
               {activeTab === 'sections' && 'Exam Sections Management'}
             </h1>
             <p className="text-gray-500 text-sm mt-1">
-              {activeTab === 'rubrics' && 'Configure test cases and weights for PRN232_DEFAULT'}
+              {activeTab === 'rubrics' && `Configure test cases and weights for ${selectedRubricCode}`}
               {activeTab === 'users' && 'Manage student and examiner accounts for the system'}
               {activeTab === 'exams' && 'Create and manage exams'}
               {activeTab === 'rooms' && 'Create and manage rooms'}
@@ -144,13 +178,48 @@ export const AdminPortal = ({ currentUser }: { currentUser: any }) => {
           
           {/* --- TAB: RUBRICS --- */}
           {activeTab === 'rubrics' && (
-            <div className="max-w-4xl bg-white rounded-xl shadow-md ring-1 ring-gray-100 p-6 space-y-6">
-              <div className="grid grid-cols-2 gap-4 pb-6 border-b border-gray-100">
-                 <Input 
-                   label="Exam Code" 
-                   value={rubric.examCode} 
-                   onChange={(e) => setRubric({...rubric, examCode: e.target.value})} 
-                 />
+            <div className="max-w-4xl space-y-6">
+              {/* Rubric Selector */}
+              <div className="bg-white rounded-xl shadow-md ring-1 ring-gray-100 p-6 flex items-end space-x-4">
+                <div className="flex-1">
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">Select Rubric</label>
+                  <select 
+                    value={selectedRubricCode}
+                    onChange={(e) => setSelectedRubricCode(e.target.value)}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-900"
+                  >
+                    {allRubrics.map((r, i) => (
+                      <option key={i} value={r.examCode}>{r.examCode}</option>
+                    ))}
+                  </select>
+                </div>
+                <Button 
+                  onClick={() => {
+                    const newCode = prompt("Enter new Exam Code for Rubric (e.g. SWP391_DEFAULT):");
+                    if (newCode && newCode.trim() !== '') {
+                      const trimmed = newCode.trim();
+                      if (!allRubrics.find(r => r.examCode === trimmed)) {
+                        // Temporarily add it to the dropdown list so it displays correctly
+                        setAllRubrics(prev => [...prev, { examCode: trimmed }]);
+                      }
+                      setSelectedRubricCode(trimmed);
+                    }
+                  }}
+                  variant="primary"
+                >
+                  <FolderUp className="w-4 h-4 mr-2" /> New Rubric
+                </Button>
+              </div>
+
+              {/* Rubric Form */}
+              <div className="bg-white rounded-xl shadow-md ring-1 ring-gray-100 p-6 space-y-6">
+                <div className="grid grid-cols-2 gap-4 pb-6 border-b border-gray-100">
+                   <Input 
+                     label="Exam Code (Locked to Selected)" 
+                     value={rubric.examCode} 
+                     disabled={true}
+                     onChange={() => {}} 
+                   />
                  <Input 
                    label="Max Score" 
                    type="number" 
@@ -235,31 +304,73 @@ export const AdminPortal = ({ currentUser }: { currentUser: any }) => {
                 </div>
               </div>
 
+              <div>
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="font-bold text-gray-800">Required Files</h3>
+                  <Button variant="secondary" className="text-sm" onClick={() => setRubric({...rubric, requiredFiles: [...rubric.requiredFiles, { pattern: '', mustExist: true }]})}>
+                    <Plus className="w-4 h-4 mr-1" /> Add File
+                  </Button>
+                </div>
+                <div className="space-y-4">
+                  {rubric.requiredFiles.map((file, idx) => (
+                    <div key={idx} className="flex gap-4 items-center p-4 bg-gray-50 rounded-lg border border-gray-200">
+                      <div className="flex-1">
+                        <Input 
+                          label="File Pattern" 
+                          value={file.pattern} 
+                          onChange={(e) => {
+                            const newFiles = [...rubric.requiredFiles];
+                            newFiles[idx].pattern = e.target.value;
+                            setRubric({...rubric, requiredFiles: newFiles});
+                          }} 
+                        />
+                      </div>
+                      <label className="flex items-center mt-6 text-sm">
+                        <input 
+                          type="checkbox" 
+                          checked={file.mustExist}
+                          onChange={(e) => {
+                            const newFiles = [...rubric.requiredFiles];
+                            newFiles[idx].mustExist = e.target.checked;
+                            setRubric({...rubric, requiredFiles: newFiles});
+                          }} 
+                          className="mr-2 rounded border-gray-300 text-blue-900 focus:ring-blue-900"
+                        />
+                        Must Exist
+                      </label>
+                      <button 
+                        onClick={() => {
+                          const newFiles = rubric.requiredFiles.filter((_, i) => i !== idx);
+                          setRubric({...rubric, requiredFiles: newFiles});
+                        }}
+                        className="p-2 text-gray-400 hover:text-red-500 mt-6"
+                      ><XCircle className="w-5 h-5" /></button>
+                    </div>
+                  ))}
+                  {rubric.requiredFiles.length === 0 && (
+                     <p className="text-sm text-gray-500 italic">No required files specified.</p>
+                  )}
+                </div>
+              </div>
+
               <div className="pt-6 border-t border-gray-100 flex justify-end items-center space-x-3">
                 {rubricMessage && <span className={`text-sm font-medium mr-4 ${rubricMessage.includes('Error') ? 'text-red-600' : 'text-green-600'}`}>{rubricMessage}</span>}
                 <Button variant="secondary" onClick={() => {
-                   const fetchRubric = async () => {
-                     try {
-                       const res = await axios.get(`/api/Grading/rubrics/PRN232_DEFAULT`);
-                       if (res.data) {
-                         setRubric({
-                           examCode: res.data.examCode || 'PRN232_DEFAULT',
-                           maxScore: res.data.maxScore || 10.0,
-                           solutionPattern: res.data.solutionPattern || '',
-                           forbidHardcodedConnectionString: res.data.forbidHardcodedConnectionString || false,
-                           deductionPointsPerNamingError: res.data.deductionPointsPerNamingError || 1.0,
-                           requiredProjects: res.data.requiredProjects || [],
-                           requiredFiles: res.data.requiredFiles || []
-                         });
-                       }
-                     } catch(e) {}
-                   };
-                   fetchRubric();
+                  // Trigger fetch
+                  const fetchAll = async () => {
+                    const res = await axios.get('/api/Grading/rubrics');
+                    setAllRubrics(res.data);
+                  };
+                  fetchAll();
+                  setSelectedRubricCode(selectedRubricCode);
+                  setRubricMessage('Discarded changes');
+                  setTimeout(() => setRubricMessage(''), 2000);
                 }}>Discard Changes</Button>
                 <Button variant="primary" onClick={handleSaveRubric} disabled={isSavingRubric}>
                   {isSavingRubric ? 'Saving...' : 'Save Configuration'}
                 </Button>
               </div>
+            </div>
             </div>
           )}
 
@@ -280,15 +391,22 @@ export const AdminPortal = ({ currentUser }: { currentUser: any }) => {
     </div>
   );
 };
-
-// --- CRUD Components ---
-
 const UsersManager = () => {
   const [users, setUsers] = useState<any[]>([]);
+  // State for Add User form
   const [userName, setUserName] = useState('');
+  const [password, setPassword] = useState('');
+  const [studentCode, setStudentCode] = useState('');
+  const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [role, setRole] = useState('Student');
-  const [editingId, setEditingId] = useState<string | null>(null);
+  const [isActive, setIsActive] = useState(true);
+  
+  // State for Detail/Edit View
+  const [detailUserId, setDetailUserId] = useState<string | null>(null);
+  const [detailUser, setDetailUser] = useState<any>(null);
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [profileFormData, setProfileFormData] = useState<any>({});
 
   useEffect(() => {
     fetchUsers();
@@ -304,21 +422,39 @@ const UsersManager = () => {
   };
 
   const handleSave = async () => {
-    if (!userName || !email) return;
+    if (!userName || !fullName || !password) {
+        alert('Please fill required fields (User Name, Full Name, Password).');
+        return;
+    }
     try {
-      if (editingId) {
-        await axios.put(`/api/users/${editingId}`, { userName, fullName: userName, email, role, isActive: true, studentCode: userName });
-        setEditingId(null);
-      } else {
-        await axios.post('/api/users', { userName, fullName: userName, email, role, isActive: true, studentCode: userName });
-      }
+      const roleMap: Record<string, number> = {
+        'Student': 1,
+        'Lecturer': 2,
+        'Admin': 3
+      };
+      
+      const payload = { 
+        userName, 
+        password, 
+        studentCode, 
+        fullName, 
+        email, 
+        role: roleMap[role] ?? 0, 
+        isActive 
+      };
+
+      await axios.post('/api/users', payload);
       setUserName('');
+      setPassword('');
+      setStudentCode('');
+      setFullName('');
       setEmail('');
       setRole('Student');
+      setIsActive(true);
       fetchUsers();
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
-      alert('Failed to save user');
+      alert(e.response?.data || 'Failed to add user');
     }
   };
 
@@ -332,45 +468,153 @@ const UsersManager = () => {
     }
   };
 
+  const handleSaveProfile = async () => {
+    try {
+      const roleMap: Record<string, number> = { 'Student': 1, 'Lecturer': 2, 'Admin': 3 };
+      const payload = {
+        userName: profileFormData.userName,
+        password: profileFormData.password,
+        studentCode: profileFormData.studentCode,
+        fullName: profileFormData.fullName,
+        email: profileFormData.email,
+        role: roleMap[profileFormData.role] ?? 0,
+        isActive: profileFormData.isActive
+      };
+      await axios.put(`/api/users/${detailUserId}`, payload);
+      const res = await axios.get(`/api/users/${detailUserId}`);
+      setDetailUser(res.data);
+      setIsEditingProfile(false);
+      fetchUsers();
+    } catch (e) {
+      console.error(e);
+      alert('Failed to update user');
+    }
+  };
+
+  if (detailUserId && detailUser) {
+    return (
+      <div className="bg-white rounded-xl shadow-md ring-1 ring-gray-100 p-8 max-w-4xl mx-auto flex flex-col font-sans">
+        <div className="flex justify-between items-center mb-6 border-b pb-4">
+          <div>
+             <h2 className="text-2xl font-bold text-gray-900">{isEditingProfile ? 'Edit User Profile' : 'User Profile'}</h2>
+             <p className="text-sm text-gray-500 mt-1">Loaded via GET /api/users/{detailUserId}</p>
+          </div>
+          <div className="space-x-2">
+            {!isEditingProfile && <Button variant="primary" onClick={() => setIsEditingProfile(true)}><Settings className="w-4 h-4 mr-2" /> Edit Profile</Button>}
+            {isEditingProfile && <Button variant="primary" onClick={handleSaveProfile}><CheckCircle2 className="w-4 h-4 mr-2" /> Save Changes</Button>}
+            <Button variant="secondary" onClick={() => {
+              if (isEditingProfile) setIsEditingProfile(false);
+              else setDetailUserId(null);
+            }}>{isEditingProfile ? 'Cancel Edit' : 'Back to List'}</Button>
+          </div>
+        </div>
+        
+        {isEditingProfile ? (
+          <div className="grid grid-cols-2 gap-4 text-sm">
+             <Input label="User Name" value={profileFormData.userName} onChange={(e) => setProfileFormData({...profileFormData, userName: e.target.value})} />
+             <Input label="Password (leave blank to keep)" type="password" value={profileFormData.password} onChange={(e) => setProfileFormData({...profileFormData, password: e.target.value})} />
+             <Input label="Full Name" value={profileFormData.fullName} onChange={(e) => setProfileFormData({...profileFormData, fullName: e.target.value})} />
+             <Input label="Email" value={profileFormData.email} onChange={(e) => setProfileFormData({...profileFormData, email: e.target.value})} />
+             <Input label="Identity Code" value={profileFormData.studentCode} onChange={(e) => setProfileFormData({...profileFormData, studentCode: e.target.value})} />
+             
+             <div className="flex gap-4">
+               <div className="flex flex-col space-y-1 flex-1">
+                 <label className="text-sm font-medium text-gray-700">Role</label>
+                 <select value={profileFormData.role} onChange={(e) => setProfileFormData({...profileFormData, role: e.target.value})} className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:border-blue-900 focus:ring-blue-100 bg-white">
+                   <option value="Student">Student</option>
+                   <option value="Lecturer">Lecturer</option>
+                   <option value="Admin">Admin</option>
+                 </select>
+               </div>
+               <label className="flex items-center mt-6 text-sm">
+                 <input type="checkbox" checked={profileFormData.isActive} onChange={(e) => setProfileFormData({...profileFormData, isActive: e.target.checked})} className="mr-2 rounded border-gray-300 text-blue-900 focus:ring-blue-900" /> Active
+               </label>
+             </div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-y-4 gap-x-8 text-sm">
+             <div><span className="font-semibold text-gray-500 block mb-1">ID:</span> <span className="text-gray-900 font-mono">{detailUser.id}</span></div>
+             <div><span className="font-semibold text-gray-500 block mb-1">Username:</span> <span className="text-gray-900 text-lg">{detailUser.userName}</span></div>
+             <div><span className="font-semibold text-gray-500 block mb-1">Full Name:</span> <span className="text-gray-900 text-lg">{detailUser.fullName}</span></div>
+             <div><span className="font-semibold text-gray-500 block mb-1">Email:</span> <span className="text-gray-900">{detailUser.email}</span></div>
+             <div><span className="font-semibold text-gray-500 block mb-1">Role:</span> <span className="bg-gray-100 text-gray-700 px-2 py-1 rounded text-xs font-semibold">{detailUser.role}</span></div>
+             <div><span className="font-semibold text-gray-500 block mb-1">Identity Code:</span> <span className="text-gray-900">{detailUser.studentCode || 'N/A'}</span></div>
+             <div><span className="font-semibold text-gray-500 block mb-1">System Status:</span> <Badge status={detailUser.isActive ? 'success' : 'neutral'} /></div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="bg-white rounded-xl shadow-md ring-1 ring-gray-100 overflow-hidden flex flex-col max-w-6xl">
-      <div className="p-6 border-b border-gray-200 bg-gray-50 flex gap-4 items-end">
-        <Input label="Name" value={userName} onChange={(e) => setUserName(e.target.value)} />
-        <Input label="Email" value={email} onChange={(e) => setEmail(e.target.value)} />
-        <div className="flex flex-col space-y-1">
-          <label className="text-sm font-medium text-gray-700">Role</label>
-          <select value={role} onChange={(e) => setRole(e.target.value)} className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:border-blue-900 focus:ring-blue-100 bg-white">
-            <option value="Student">Student</option>
-            <option value="Lecturer">Lecturer</option>
-            <option value="Admin">Admin</option>
-          </select>
+      <div className="p-6 border-b border-gray-200 bg-gray-50 flex flex-col gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Input label="User Name" value={userName} onChange={(e) => setUserName(e.target.value)} />
+          <Input label="Password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
+          <Input label="Student/Lecturer Code" value={studentCode} onChange={(e) => setStudentCode(e.target.value)} />
+          <Input label="Full Name" value={fullName} onChange={(e) => setFullName(e.target.value)} />
+          <Input label="Email" value={email} onChange={(e) => setEmail(e.target.value)} />
+          <div className="flex gap-4">
+            <div className="flex flex-col space-y-1 flex-1">
+              <label className="text-sm font-medium text-gray-700">Role</label>
+              <select value={role} onChange={(e) => setRole(e.target.value)} className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:border-blue-900 focus:ring-blue-100 bg-white">
+                <option value="Student">Student</option>
+                <option value="Lecturer">Lecturer</option>
+                <option value="Admin">Admin</option>
+              </select>
+            </div>
+            <label className="flex items-center mt-6 text-sm">
+              <input type="checkbox" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} className="mr-2 rounded border-gray-300 text-blue-900 focus:ring-blue-900" /> Active
+            </label>
+          </div>
         </div>
-        <Button variant="primary" onClick={handleSave}><Plus className="w-4 h-4 mr-2" /> {editingId ? 'Update User' : 'Add User'}</Button>
-        {editingId && <Button variant="secondary" onClick={() => { setEditingId(null); setUserName(''); setEmail(''); setRole('Student'); }}>Cancel</Button>}
+        <div className="flex gap-2 justify-end">
+          <Button variant="primary" onClick={handleSave}><Plus className="w-4 h-4 mr-2" /> Add User</Button>
+        </div>
       </div>
       <div className="p-0 flex-1 overflow-auto min-h-[400px]">
         <table className="w-full text-sm text-left text-gray-600">
           <thead className="text-xs text-gray-500 uppercase bg-white border-b border-gray-200 sticky top-0">
             <tr>
+              <th className="px-6 py-4">User Name</th>
               <th className="px-6 py-4">Name</th>
               <th className="px-6 py-4">Email</th>
               <th className="px-6 py-4">Role</th>
+              <th className="px-6 py-4 text-center">Status</th>
               <th className="px-6 py-4">Actions</th>
             </tr>
           </thead>
           <tbody>
             {users.map(u => (
               <tr key={u.id} className="bg-white border-b border-gray-100 hover:bg-gray-50">
+                <td className="px-6 py-3 font-medium text-gray-800">{u.userName}</td>
                 <td className="px-6 py-3 font-medium text-gray-800">{u.fullName}</td>
                 <td className="px-6 py-3 text-gray-500">{u.email}</td>
-                <td className="px-6 py-3">{u.role}</td>
+                <td className="px-6 py-3">
+                  <span className="bg-gray-100 text-gray-700 px-2 py-1 rounded text-xs font-semibold">{u.role}</span>
+                </td>
+                <td className="px-6 py-3 text-center">
+                  <Badge status={u.isActive ? 'success' : 'neutral'} />
+                </td>
                 <td className="px-6 py-3 space-x-2">
-                  <Button variant="secondary" className="text-xs px-2 py-1" onClick={() => {
-                    setEditingId(u.id);
-                    setUserName(u.fullName);
-                    setEmail(u.email);
-                    setRole(u.role);
-                  }}>Edit</Button>
+                    <Button variant="secondary" className="text-xs px-2 py-1" onClick={() => {
+                       setDetailUserId(u.id);
+                       // Fetch real-time detail using GET by ID API
+                       axios.get(`/api/users/${u.id}`).then(res => {
+                         setDetailUser(res.data);
+                         setProfileFormData({
+                            userName: res.data.userName || '',
+                            fullName: res.data.fullName || '',
+                            email: res.data.email || '',
+                            studentCode: res.data.studentCode || '',
+                            role: res.data.role || 'Student',
+                            isActive: res.data.isActive ?? true,
+                            password: ''
+                         });
+                         setIsEditingProfile(false);
+                       });
+                    }}>View / Edit</Button>
                   <Button variant="danger" className="text-xs px-2 py-1" onClick={() => handleDelete(u.id)}>Delete</Button>
                 </td>
               </tr>
@@ -385,14 +629,32 @@ const UsersManager = () => {
 
 const ExamsManager = () => {
   const [exams, setExams] = useState<any[]>([]);
+  
+  const [roomId, setRoomId] = useState('');
   const [code, setCode] = useState('');
   const [title, setTitle] = useState('');
   const [maxScore, setMaxScore] = useState(10);
+  const [solutionPattern, setSolutionPattern] = useState('');
+  const [requireAppSettings, setRequireAppSettings] = useState(true);
+  const [forbidHardcodedConnectionString, setForbidHardcodedConnectionString] = useState(true);
+  const [timeoutSeconds, setTimeoutSeconds] = useState(15);
+  const [plagiarismKeywords, setPlagiarismKeywords] = useState('');
+  
   const [editingId, setEditingId] = useState<string | null>(null);
+
+  const [rooms, setRooms] = useState<any[]>([]);
 
   useEffect(() => {
     fetchExams();
+    fetchRooms();
   }, []);
+
+  const fetchRooms = async () => {
+    try {
+      const res = await axios.get('/api/rooms');
+      setRooms(res.data);
+    } catch (e) { console.error(e); }
+  };
 
   const fetchExams = async () => {
     try {
@@ -404,20 +666,25 @@ const ExamsManager = () => {
   };
 
   const handleSave = async () => {
-    if (!code || !title) return;
+    if (!roomId || !code || !title) return;
     try {
+      const payload = {
+        roomId, code, title, maxScore, solutionPattern, requireAppSettings,
+        forbidHardcodedConnectionString, timeoutSeconds,
+        plagiarismKeywords: plagiarismKeywords.split(',').map(k => k.trim()).filter(k => k)
+      };
       if (editingId) {
-        await axios.put(`/api/exams/${editingId}`, { code, title, maxScore });
+        await axios.put(`/api/exams/${editingId}`, payload);
         setEditingId(null);
       } else {
-        await axios.post('/api/exams', { code, title, maxScore });
+        await axios.post('/api/exams', payload);
       }
-      setCode('');
-      setTitle('');
+      setRoomId(''); setCode(''); setTitle(''); setMaxScore(10); setSolutionPattern(''); setRequireAppSettings(true);
+      setForbidHardcodedConnectionString(true); setTimeoutSeconds(15); setPlagiarismKeywords('');
       fetchExams();
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
-      alert('Failed to save exam');
+      alert(e.response?.data || 'Failed to save exam');
     }
   };
 
@@ -433,12 +700,40 @@ const ExamsManager = () => {
 
   return (
     <div className="bg-white rounded-xl shadow-md ring-1 ring-gray-100 overflow-hidden flex flex-col max-w-6xl">
-      <div className="p-6 border-b border-gray-200 bg-gray-50 flex gap-4 items-end">
-        <Input label="Exam Code" value={code} onChange={(e) => setCode(e.target.value)} />
-        <Input label="Title" value={title} onChange={(e) => setTitle(e.target.value)} />
-        <Input label="Max Score" type="number" value={maxScore} onChange={(e) => setMaxScore(parseFloat(e.target.value))} />
-        <Button variant="primary" onClick={handleSave}><Plus className="w-4 h-4 mr-2" /> {editingId ? 'Update' : 'Add Exam'}</Button>
-        {editingId && <Button variant="secondary" onClick={() => { setEditingId(null); setCode(''); setTitle(''); }}>Cancel</Button>}
+      <div className="p-6 border-b border-gray-200 bg-gray-50 flex flex-col gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="flex flex-col space-y-1">
+            <label className="text-sm font-medium text-gray-700">Room</label>
+            <select value={roomId} onChange={(e) => setRoomId(e.target.value)} className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:border-blue-900 focus:ring-blue-100 bg-white">
+              <option value="">-- Select Room --</option>
+              {rooms.map(r => (
+                <option key={r.id} value={r.id}>{r.name} ({r.code})</option>
+              ))}
+            </select>
+          </div>
+          <Input label="Exam Code" value={code} onChange={(e) => setCode(e.target.value)} />
+          <Input label="Title" value={title} onChange={(e) => setTitle(e.target.value)} />
+          <Input label="Max Score" type="number" value={maxScore} onChange={(e) => setMaxScore(parseFloat(e.target.value))} />
+          <Input label="Solution Pattern" placeholder="e.g. *.sln" value={solutionPattern} onChange={(e) => setSolutionPattern(e.target.value)} />
+          <Input label="Timeout (s)" type="number" value={timeoutSeconds} onChange={(e) => setTimeoutSeconds(parseInt(e.target.value))} />
+          <Input label="Plagiarism Keywords (comma separated)" value={plagiarismKeywords} onChange={(e) => setPlagiarismKeywords(e.target.value)} />
+          
+          <div className="flex flex-col gap-2 mt-4 md:col-span-2">
+            <label className="flex items-center text-sm">
+              <input type="checkbox" checked={requireAppSettings} onChange={(e) => setRequireAppSettings(e.target.checked)} className="mr-2 rounded border-gray-300 text-blue-900 focus:ring-blue-900" />
+              Require AppSettings
+            </label>
+            <label className="flex items-center text-sm">
+              <input type="checkbox" checked={forbidHardcodedConnectionString} onChange={(e) => setForbidHardcodedConnectionString(e.target.checked)} className="mr-2 rounded border-gray-300 text-blue-900 focus:ring-blue-900" />
+              Forbid Hardcoded Connection String
+            </label>
+          </div>
+        </div>
+        
+        <div className="flex gap-2 justify-end">
+          {editingId && <Button variant="secondary" onClick={() => { setEditingId(null); setRoomId(''); setCode(''); setTitle(''); setMaxScore(10); setSolutionPattern(''); setRequireAppSettings(true); setForbidHardcodedConnectionString(true); setTimeoutSeconds(15); setPlagiarismKeywords(''); }}>Cancel</Button>}
+          <Button variant="primary" onClick={handleSave}><Plus className="w-4 h-4 mr-2" /> {editingId ? 'Update Exam' : 'Add Exam'}</Button>
+        </div>
       </div>
       <div className="p-0 flex-1 overflow-auto min-h-[400px]">
         <table className="w-full text-sm text-left text-gray-600">
@@ -459,9 +754,15 @@ const ExamsManager = () => {
                 <td className="px-6 py-3 space-x-2">
                   <Button variant="secondary" className="text-xs px-2 py-1" onClick={() => {
                     setEditingId(e.examId || e.id);
+                    setRoomId(e.roomId || '');
                     setCode(e.code);
                     setTitle(e.title);
                     setMaxScore(e.maxScore);
+                    setSolutionPattern(e.solutionPattern || '');
+                    setRequireAppSettings(e.requireAppSettings ?? true);
+                    setForbidHardcodedConnectionString(e.forbidHardcodedConnectionString ?? true);
+                    setTimeoutSeconds(e.timeoutSeconds || 15);
+                    setPlagiarismKeywords((e.plagiarismKeywords || []).join(', '));
                   }}>Edit</Button>
                   <Button variant="danger" className="text-xs px-2 py-1" onClick={() => handleDelete(e.examId || e.id)}>Delete</Button>
                 </td>
@@ -477,13 +778,24 @@ const ExamsManager = () => {
 
 const RoomsManager = () => {
   const [rooms, setRooms] = useState<any[]>([]);
+  const [code, setCode] = useState('');
   const [name, setName] = useState('');
-  const [capacity, setCapacity] = useState(30);
+  const [lecturerId, setLecturerId] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
+
+  const [lecturers, setLecturers] = useState<any[]>([]);
 
   useEffect(() => {
     fetchRooms();
+    fetchLecturers();
   }, []);
+
+  const fetchLecturers = async () => {
+    try {
+      const res = await axios.get('/api/users?role=Lecturer');
+      setLecturers(res.data);
+    } catch (e) { console.error(e); }
+  };
 
   const fetchRooms = async () => {
     try {
@@ -495,19 +807,22 @@ const RoomsManager = () => {
   };
 
   const handleSave = async () => {
-    if (!name) return;
+    if (!code || !name || !lecturerId) return;
     try {
+      const payload = { code, name, lecturerId };
       if (editingId) {
-        await axios.put(`/api/rooms/${editingId}`, { name, capacity, status: 'Active' });
+        await axios.put(`/api/rooms/${editingId}`, payload);
         setEditingId(null);
       } else {
-        await axios.post('/api/rooms', { name, capacity, status: 'Active' });
+        await axios.post('/api/rooms', payload);
       }
+      setCode('');
       setName('');
+      setLecturerId('');
       fetchRooms();
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
-      alert('Failed to save room');
+      alert(e.response?.data || 'Failed to save room');
     }
   };
 
@@ -523,35 +838,43 @@ const RoomsManager = () => {
 
   return (
     <div className="bg-white rounded-xl shadow-md ring-1 ring-gray-100 overflow-hidden flex flex-col max-w-6xl">
-      <div className="p-6 border-b border-gray-200 bg-gray-50 flex gap-4 items-end">
+      <div className="p-6 border-b border-gray-200 bg-gray-50 flex gap-4 items-end flex-wrap">
+        <Input label="Room Code" value={code} onChange={(e) => setCode(e.target.value)} />
         <Input label="Room Name" value={name} onChange={(e) => setName(e.target.value)} />
-        <Input label="Capacity" type="number" value={capacity} onChange={(e) => setCapacity(parseInt(e.target.value))} />
+        <div className="flex flex-col space-y-1 w-64">
+          <label className="text-sm font-medium text-gray-700">Lecturer</label>
+          <select value={lecturerId} onChange={(e) => setLecturerId(e.target.value)} className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:border-blue-900 focus:ring-blue-100 bg-white">
+            <option value="">-- Select Lecturer --</option>
+            {lecturers.map(l => (
+              <option key={l.id} value={l.id}>{l.fullName} ({l.userName})</option>
+            ))}
+          </select>
+        </div>
         <Button variant="primary" onClick={handleSave}><Plus className="w-4 h-4 mr-2" /> {editingId ? 'Update' : 'Add Room'}</Button>
-        {editingId && <Button variant="secondary" onClick={() => { setEditingId(null); setName(''); }}>Cancel</Button>}
+        {editingId && <Button variant="secondary" onClick={() => { setEditingId(null); setCode(''); setName(''); setLecturerId(''); }}>Cancel</Button>}
       </div>
       <div className="p-0 flex-1 overflow-auto min-h-[400px]">
         <table className="w-full text-sm text-left text-gray-600">
           <thead className="text-xs text-gray-500 uppercase bg-white border-b border-gray-200 sticky top-0">
             <tr>
+              <th className="px-6 py-4">Code</th>
               <th className="px-6 py-4">Name</th>
-              <th className="px-6 py-4">Capacity</th>
-              <th className="px-6 py-4">Status</th>
+              <th className="px-6 py-4">Lecturer</th>
               <th className="px-6 py-4">Actions</th>
             </tr>
           </thead>
           <tbody>
             {rooms.map(r => (
               <tr key={r.id} className="bg-white border-b border-gray-100 hover:bg-gray-50">
-                <td className="px-6 py-3 font-medium text-gray-800">{r.name}</td>
-                <td className="px-6 py-3 text-gray-500">{r.capacity}</td>
-                <td className="px-6 py-3">
-                  <Badge status={r.status === 'Active' ? 'success' : 'neutral'} />
-                </td>
+                <td className="px-6 py-3 font-medium text-gray-800">{r.code}</td>
+                <td className="px-6 py-3 text-gray-500">{r.name}</td>
+                <td className="px-6 py-3">{r.lecturerName}</td>
                 <td className="px-6 py-3 space-x-2">
                   <Button variant="secondary" className="text-xs px-2 py-1" onClick={() => {
                     setEditingId(r.id);
+                    setCode(r.code);
                     setName(r.name);
-                    setCapacity(r.capacity);
+                    setLecturerId(r.lecturerId);
                   }}>Edit</Button>
                   <Button variant="danger" className="text-xs px-2 py-1" onClick={() => handleDelete(r.id)}>Delete</Button>
                 </td>
@@ -592,7 +915,7 @@ const ExamSectionsManager = () => {
       const res = await axios.get('/api/exams');
       setExams(res.data);
       if (res.data.length > 0) {
-        setSelectedExamId(res.data[0].id);
+        setSelectedExamId(res.data[0].examId);
       }
     } catch (e) {
       console.error(e);
@@ -653,7 +976,7 @@ const ExamSectionsManager = () => {
           >
             <option value="">-- Select Exam --</option>
             {exams.map(e => (
-              <option key={e.id} value={e.id}>{e.code} - {e.title}</option>
+              <option key={e.examId} value={e.examId}>{e.code} - {e.title}</option>
             ))}
           </select>
         </div>
@@ -662,7 +985,7 @@ const ExamSectionsManager = () => {
       <div className="p-6 border-b border-gray-200 bg-gray-50 flex gap-4 items-end flex-wrap">
         <Input label="Section Name" value={name} onChange={(e) => setName(e.target.value)} />
         <Input label="Test Filter" value={testFilter} onChange={(e) => setTestFilter(e.target.value)} />
-        <Input label="Weight" type="number" value={weight} onChange={(e) => setWeight(parseFloat(e.target.value))} />
+        <Input label="Weight" type="number" value={weight} onChange={(e) => setWeight(parseFloat(e.target.value) || 0)} />
         
         <Button variant="primary" onClick={handleSave} disabled={!selectedExamId}><Plus className="w-4 h-4 mr-2" /> {editingId ? 'Update' : 'Add Section'}</Button>
         {editingId && <Button variant="secondary" onClick={() => { setEditingId(null); setName(''); }}>Cancel</Button>}

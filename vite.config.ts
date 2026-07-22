@@ -82,7 +82,7 @@ export default defineConfig({
         secure: false,
       },
       '/api/notifications': {
-        target: 'http://localhost:5176',
+        target: 'http://localhost:5177',
         changeOrigin: true,
         secure: false,
       },

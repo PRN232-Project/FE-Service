@@ -507,6 +507,27 @@ const SampleTestEngineView = ({ sample, onBack }: { sample: any, onBack: () => v
 
   const addLog = (node: React.ReactNode) => setLogs(prev => [...prev, node]);
 
+  const scanProjects = async () => {
+    setIsRunning(true);
+    setLogs([<div key="start-scan" className="text-blue-400 font-bold">--- Scanning Projects ---</div>]);
+    try {
+      addLog(<div key="scan-prog" className="text-gray-300 mt-2">$ Scanning workspace: {sample.workspacePath}...</div>);
+      const res = await axios.get(`/api/Grading/projects?workspacePath=${encodeURIComponent(sample.workspacePath)}`);
+      if (res.data && res.data.length > 0) {
+        addLog(<div key="scan-res" className="text-green-400 mt-2">Found {res.data.length} projects:</div>);
+        res.data.forEach((p: string, i: number) => {
+          addLog(<div key={`proj-${i}`} className="text-gray-400 ml-4">- {p}</div>);
+        });
+      } else {
+        addLog(<div key="scan-empty" className="text-yellow-400 mt-2">No .csproj files found.</div>);
+      }
+    } catch (e: any) {
+      addLog(<div key="scan-err" className="text-red-500 font-bold mt-2">ERROR: {e.message}</div>);
+    } finally {
+      setIsRunning(false);
+    }
+  };
+
   const runGrading = async () => {
     setIsRunning(true);
     setLogs([<div key="start" className="text-blue-400 font-bold">--- Starting Grading Engine ---</div>]);
@@ -611,6 +632,9 @@ const SampleTestEngineView = ({ sample, onBack }: { sample: any, onBack: () => v
             </div>
           </div>
           <div className="flex items-center space-x-3">
+             <Button variant="secondary" onClick={scanProjects} disabled={isRunning} className="bg-slate-700 hover:bg-slate-600 text-white border-0 mr-2">
+               <Search className="w-4 h-4 mr-2" /> {isRunning ? 'Running...' : 'Scan Projects'}
+             </Button>
              <Button variant="primary" onClick={runGrading} disabled={isRunning} className="bg-blue-600 hover:bg-blue-700 text-white border-0">
                 <Terminal className="w-4 h-4 mr-2" /> {isRunning ? 'Running...' : 'Run Grading Engine'}
              </Button>
