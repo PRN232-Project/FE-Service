@@ -56,6 +56,16 @@ export default defineConfig({
         changeOrigin: true,
         secure: false,
       },
+      '/api/grading-batches': {
+        target: 'http://localhost:5177',
+        changeOrigin: true,
+        secure: false,
+      },
+      '/api/grading-items': {
+        target: 'http://localhost:5177',
+        changeOrigin: true,
+        secure: false,
+      },
       '/api/exam-sections': {
         target: 'http://localhost:5177',
         changeOrigin: true,
