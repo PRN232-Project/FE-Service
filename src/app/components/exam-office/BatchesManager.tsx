@@ -3,7 +3,10 @@ import axios from 'axios';
 import { Plus, CheckSquare, Square } from 'lucide-react';
 import { Button, Input } from '../shared-ui';
 
+import { useNavigate } from 'react-router';
+
 export const BatchesManager = () => {
+  const navigate = useNavigate();
   const [batches, setBatches] = useState<any[]>([]);
   
   // Create Form State
@@ -176,7 +179,7 @@ export const BatchesManager = () => {
           </thead>
           <tbody>
             {Array.isArray(batches) && batches.map(b => (
-              <tr key={b.id} className="bg-white border-b border-gray-100 hover:bg-gray-50">
+              <tr key={b.id} className="bg-white border-b border-gray-100 hover:bg-gray-50 cursor-pointer" onClick={() => navigate(`/exam-office/batches/${b.id}`)}>
                 <td className="px-6 py-3 font-medium text-gray-800">{b.code || b.id}</td>
                 <td className="px-6 py-3">{b.examSessionCode}</td>
                 <td className="px-6 py-3">{b.lecturerName}</td>
@@ -185,7 +188,7 @@ export const BatchesManager = () => {
                   <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs font-bold">{b.status}</span>
                 </td>
                 <td className="px-6 py-3 space-x-2">
-                  <Button variant="secondary" className="text-xs px-2 py-1" onClick={() => handleExportExcel(b.id)}>Export Excel</Button>
+                  <Button variant="secondary" className="text-xs px-2 py-1" onClick={(e) => { e.stopPropagation(); handleExportExcel(b.id); }}>Export Excel</Button>
                 </td>
               </tr>
             ))}

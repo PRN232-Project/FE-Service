@@ -287,6 +287,29 @@ const BatchDetail = ({ currentUser, navigate }: { currentUser: any, navigate: an
       alert(typeof e.response?.data === 'object' ? JSON.stringify(e.response.data) : (e.response?.data || 'Failed to submit batch'));
     }
   };
+
+  const handleExportExcel = async () => {
+    try {
+      const res = await axios.get(`/api/grading-batches/${id}/export-excel`, { responseType: 'blob' });
+      const disposition = res.headers['content-disposition'];
+      let filename = 'GradingResult.xlsx';
+      if (disposition && disposition.indexOf('filename=') !== -1) {
+        const matches = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/.exec(disposition);
+        if (matches != null && matches[1]) { 
+          filename = matches[1].replace(/['"]/g, '');
+        }
+      }
+      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', filename);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (e) {
+      alert('Failed to export excel');
+    }
+  };
   
   const handleRetryItem = async (itemId: string) => {
     if (!localRootPath) {
@@ -294,6 +317,9 @@ const BatchDetail = ({ currentUser, navigate }: { currentUser: any, navigate: an
       return;
     }
     try {
+      // Notify Central BE to reset item status to Grading/LocalMatched
+      await axios.post(`/api/grading-items/${itemId}/retry`);
+      
       const pkgRes = await axios.post(`/api/grading-batches/${id}/execution-package`);
       await axios.post('http://localhost:5174/api/local-grading/run-batch', {
         localRootPath,
@@ -357,6 +383,7 @@ const BatchDetail = ({ currentUser, navigate }: { currentUser: any, navigate: an
           {batch.status === 'InProgress' && (
             <Button variant="primary" onClick={handleSubmitBatch}>Submit Batch</Button>
           )}
+          <Button variant="secondary" onClick={handleExportExcel}>Export Excel</Button>
         </div>
       </div>
 

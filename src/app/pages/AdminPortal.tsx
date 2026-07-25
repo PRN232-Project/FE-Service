@@ -10,92 +10,6 @@ import { NotificationDropdown } from '../components/NotificationDropdown';
 export const AdminPortal = ({ currentUser }: { currentUser: any }) => {
   const [activeTab, setActiveTab] = useState<'users'>('users');
 
-  // Rubric State (mapped to GradingEngine.Api RubricDto)
-  const [rubric, setRubric] = useState({
-    examCode: 'PRN232_DEFAULT',
-    maxScore: 10.0,
-    solutionPattern: '',
-    forbidHardcodedConnectionString: true,
-    deductionPointsPerNamingError: 1.0,
-    requiredProjects: [] as { pattern: string; mustExist: boolean }[],
-    requiredFiles: [] as { pattern: string; mustExist: boolean }[]
-  });
-  const [allRubrics, setAllRubrics] = useState<any[]>([]);
-  const [selectedRubricCode, setSelectedRubricCode] = useState('PRN232_DEFAULT');
-  const [isSavingRubric, setIsSavingRubric] = useState(false);
-  const [rubricMessage, setRubricMessage] = useState('');
-
-  // Fetch all rubrics when entering tab
-  useEffect(() => {
-    if (activeTab === 'rubrics') {
-      const fetchAllRubrics = async () => {
-        try {
-          const res = await axios.get('/api/Grading/rubrics');
-          setAllRubrics(res.data);
-        } catch (e) {
-          console.error('Error fetching all rubrics', e);
-        }
-      };
-      fetchAllRubrics();
-    }
-  }, [activeTab]);
-
-  // Fetch specific rubric when selection changes
-  useEffect(() => {
-    if (activeTab === 'rubrics') {
-      const fetchRubric = async () => {
-        try {
-          const res = await axios.get(`/api/Grading/rubrics/${selectedRubricCode}`);
-          if (res.data) {
-             setRubric({
-                examCode: res.data.examCode || selectedRubricCode,
-               maxScore: res.data.maxScore || 10.0,
-               solutionPattern: res.data.solutionPattern || '',
-               forbidHardcodedConnectionString: res.data.forbidHardcodedConnectionString,
-               deductionPointsPerNamingError: res.data.deductionPointsPerNamingError || 1.0,
-               requiredProjects: res.data.requiredProjects || [],
-               requiredFiles: res.data.requiredFiles || []
-            });
-          }
-        } catch (error: any) {
-          if (error.response?.status === 404) {
-            console.info(`Rubric ${selectedRubricCode} not found. Loading empty template.`);
-            setRubricMessage(`New template for ${selectedRubricCode} loaded.`);
-            setTimeout(() => setRubricMessage(''), 3000);
-          } else {
-            console.error("Error fetching rubric:", error);
-          }
-          // If not found, reset to a new empty template for the selected code
-          setRubric({
-             examCode: selectedRubricCode,
-             maxScore: 10.0,
-             solutionPattern: '',
-             forbidHardcodedConnectionString: true,
-             deductionPointsPerNamingError: 1.0,
-             requiredProjects: [],
-             requiredFiles: []
-          });
-        }
-      };
-      
-      fetchRubric();
-    }
-  }, [activeTab, selectedRubricCode]);
-
-  const handleSaveRubric = async () => {
-    setIsSavingRubric(true);
-    setRubricMessage('');
-    try {
-      await axios.post(`/api/Grading/rubrics`, rubric);
-      setRubricMessage('Saved successfully!');
-      setTimeout(() => setRubricMessage(''), 3000);
-    } catch (error) {
-      console.error(error);
-      setRubricMessage('Error saving rubric');
-    } finally {
-      setIsSavingRubric(false);
-    }
-  };
 
   return (
     <div className="flex h-full bg-slate-50 font-sans">
@@ -126,18 +40,10 @@ export const AdminPortal = ({ currentUser }: { currentUser: any }) => {
         <div className="bg-white border-b border-gray-200 p-6 flex justify-between items-center">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">
-              {activeTab === 'rubrics' && 'Rubric Configuration'}
-              {activeTab === 'users' && 'User Management'}
-              {activeTab === 'exams' && 'Exam Management'}
-              {activeTab === 'rooms' && 'Room Management'}
-              {activeTab === 'sections' && 'Exam Sections Management'}
+              User Management
             </h1>
             <p className="text-gray-500 text-sm mt-1">
-              {activeTab === 'rubrics' && `Configure test cases and weights for ${selectedRubricCode}`}
-              {activeTab === 'users' && 'Manage student and examiner accounts for the system'}
-              {activeTab === 'exams' && 'Create and manage exams'}
-              {activeTab === 'rooms' && 'Create and manage rooms'}
-              {activeTab === 'sections' && 'Create and manage sections for exams'}
+              Manage student and examiner accounts for the system
             </p>
           </div>
           <div className="flex items-center space-x-4">

@@ -12,6 +12,7 @@ import { StudentsManager } from '../components/exam-office/StudentsManager';
 import { ExamPapersManager } from '../components/exam-office/ExamPapersManager';
 import { SessionsManager } from '../components/exam-office/SessionsManager';
 import { BatchesManager } from '../components/exam-office/BatchesManager';
+import { BatchDetailOffice } from '../components/exam-office/BatchDetailOffice';
 
 export const ExamOfficePortal = ({ currentUser }: { currentUser: any }) => {
   const navigate = useNavigate();
@@ -157,6 +158,7 @@ export const ExamOfficePortal = ({ currentUser }: { currentUser: any }) => {
             <Route path="papers" element={<ExamPapersManager />} />
             <Route path="sessions" element={<SessionsManager />} />
             <Route path="batches" element={<BatchesManager />} />
+            <Route path="batches/:id" element={<BatchDetailOffice />} />
             <Route path="plagiarism" element={<PlagiarismManager />} />
             <Route path="*" element={<Navigate to="/exam-office/students" replace />} />
           </Routes>
