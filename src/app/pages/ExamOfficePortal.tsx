@@ -8,6 +8,11 @@ import { Button, Input, Badge } from '../components/shared-ui';
 import { NotificationDropdown } from '../components/NotificationDropdown';
 import { HubConnectionBuilder } from '@microsoft/signalr';
 
+import { StudentsManager } from '../components/exam-office/StudentsManager';
+import { ExamPapersManager } from '../components/exam-office/ExamPapersManager';
+import { SessionsManager } from '../components/exam-office/SessionsManager';
+import { BatchesManager } from '../components/exam-office/BatchesManager';
+
 export const ExamOfficePortal = ({ currentUser }: { currentUser: any }) => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -147,11 +152,11 @@ export const ExamOfficePortal = ({ currentUser }: { currentUser: any }) => {
 
         <div className="flex-1 overflow-y-auto p-6">
           <Routes>
-            <Route path="students" element={<Placeholder title="Students Management" api="/api/students" />} />
+            <Route path="students" element={<StudentsManager />} />
             <Route path="rooms" element={<RoomsManager />} />
-            <Route path="papers" element={<Placeholder title="Exam Papers Management" api="/api/exam-papers" />} />
+            <Route path="papers" element={<ExamPapersManager />} />
             <Route path="sessions" element={<SessionsManager />} />
-            <Route path="batches" element={<Placeholder title="Grading Batches Management" api="/api/grading-batches" />} />
+            <Route path="batches" element={<BatchesManager />} />
             <Route path="plagiarism" element={<PlagiarismManager />} />
             <Route path="*" element={<Navigate to="/exam-office/students" replace />} />
           </Routes>
@@ -161,10 +166,10 @@ export const ExamOfficePortal = ({ currentUser }: { currentUser: any }) => {
   );
 };
 
-const Placeholder = ({ title, api }: { title: string, api: string }) => (
+const Placeholder = ({ title }: { title: string, api: string }) => (
   <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 text-center text-gray-500">
     <h3 className="text-xl font-bold text-gray-800 mb-2">{title}</h3>
-    <p>This module is connected to <code>{api}</code></p>
+    <p>Not found data</p>
   </div>
 );
 
@@ -173,6 +178,7 @@ const RoomsManager = () => {
   const [rooms, setRooms] = useState<any[]>([]);
   const [code, setCode] = useState('');
   const [name, setName] = useState('');
+  const [location, setLocation] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -189,14 +195,14 @@ const RoomsManager = () => {
   const handleSave = async () => {
     if (!code || !name) return;
     try {
-      const payload = { code, name };
+      const payload = { code, name, location: location || "" };
       if (editingId) {
         await axios.put(`/api/rooms/${editingId}`, payload);
         setEditingId(null);
       } else {
         await axios.post('/api/rooms', payload);
       }
-      setCode(''); setName('');
+      setCode(''); setName(''); setLocation('');
       fetchRooms();
     } catch (e: any) {
       alert(e.response?.data || 'Failed to save room');
@@ -215,12 +221,13 @@ const RoomsManager = () => {
   return (
     <div className="bg-white rounded-xl shadow-md ring-1 ring-gray-100 overflow-hidden flex flex-col max-w-4xl">
       <div className="p-6 border-b border-gray-200 bg-gray-50 flex flex-col gap-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Input label="Room Code" value={code} onChange={(e) => setCode(e.target.value)} />
           <Input label="Room Name" value={name} onChange={(e) => setName(e.target.value)} />
+          <Input label="Location" value={location} onChange={(e) => setLocation(e.target.value)} />
         </div>
         <div className="flex gap-2 justify-end">
-          {editingId && <Button variant="secondary" onClick={() => { setEditingId(null); setCode(''); setName(''); }}>Cancel</Button>}
+          {editingId && <Button variant="secondary" onClick={() => { setEditingId(null); setCode(''); setName(''); setLocation(''); }}>Cancel</Button>}
           <Button variant="primary" onClick={handleSave}><Plus className="w-4 h-4 mr-2" /> {editingId ? 'Update Room' : 'Add Room'}</Button>
         </div>
       </div>
@@ -243,6 +250,7 @@ const RoomsManager = () => {
                     setEditingId(r.id);
                     setCode(r.code);
                     setName(r.name);
+                    setLocation(r.location || '');
                   }}>Edit</Button>
                   <Button variant="danger" className="text-xs px-2 py-1" onClick={() => handleDelete(r.id)}>Delete</Button>
                 </td>
@@ -256,9 +264,7 @@ const RoomsManager = () => {
   );
 };
 
-const SessionsManager = () => {
-  return <Placeholder title="Exam Sessions Management" api="/api/exam-sessions" />;
-};
+const SessionsManagerStubPlaceholder = () => null; // Removed inside ExamOfficePortal since it is now imported
 
 const PlagiarismManager = () => {
   return (
@@ -277,3 +283,5 @@ const PlagiarismManager = () => {
     </div>
   );
 };
+
+// BatchesManager has been moved to its own component file

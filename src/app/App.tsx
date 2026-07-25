@@ -18,8 +18,6 @@ axios.interceptors.response.use(
         await axios.post('/api/auth/refresh-token');
         return axios(originalRequest);
       } catch (err) {
-        delete axios.defaults.headers.common['X-User-Id'];
-        delete axios.defaults.headers.common['X-User-Role'];
         window.location.href = '/';
       }
     }
@@ -44,8 +42,6 @@ export default function App() {
         const token = localStorage.getItem('accessToken');
         if (token) {
           axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-          axios.defaults.headers.common['X-User-Id'] = user.id;
-          axios.defaults.headers.common['X-User-Role'] = user.role;
         }
         return user;
       } catch (e) {}
@@ -60,8 +56,6 @@ export default function App() {
     localStorage.removeItem('currentUser');
     localStorage.removeItem('accessToken');
     localStorage.removeItem('refreshToken');
-    delete axios.defaults.headers.common['X-User-Id'];
-    delete axios.defaults.headers.common['X-User-Role'];
     delete axios.defaults.headers.common['Authorization'];
     navigate('/');
   };
@@ -135,8 +129,6 @@ function LoginScreen({ onLogin }: { onLogin: (user: AuthUser) => void }) {
       });
       const data = res.data;
       
-      axios.defaults.headers.common['X-User-Id'] = data.user.id;
-      axios.defaults.headers.common['X-User-Role'] = data.user.role;
       axios.defaults.headers.common['Authorization'] = `Bearer ${data.accessToken}`;
 
       // Map role properly if needed

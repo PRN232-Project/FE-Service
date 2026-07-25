@@ -56,7 +56,27 @@ export default defineConfig({
         changeOrigin: true,
         secure: false,
       },
+      '/api/directory': {
+        target: 'http://localhost:5177',
+        changeOrigin: true,
+        secure: false,
+      },
       '/api/grading-batches': {
+        target: 'http://localhost:5177',
+        changeOrigin: true,
+        secure: false,
+      },
+      '/api/students': {
+        target: 'http://localhost:5177',
+        changeOrigin: true,
+        secure: false,
+      },
+      '/api/exam-papers': {
+        target: 'http://localhost:5177',
+        changeOrigin: true,
+        secure: false,
+      },
+      '/api/exam-sessions': {
         target: 'http://localhost:5177',
         changeOrigin: true,
         secure: false,
