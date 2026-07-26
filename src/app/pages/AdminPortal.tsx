@@ -151,7 +151,16 @@ const UsersManager = () => {
         isActive: profileFormData.isActive
       };
       await axios.put(`/api/users/${detailUserId}`, payload);
-      // Instead of getting by ID, just refetch all users and find this one
+      // Update local state to reflect changes immediately
+      setDetailUser((prev: any) => ({
+        ...prev,
+        userName: payload.userName,
+        fullName: payload.fullName,
+        email: payload.email,
+        role: profileFormData.role,
+        isActive: payload.isActive
+      }));
+      // Also refetch all users to sync list
       fetchUsers();
       setIsEditingProfile(false);
     } catch (e) {

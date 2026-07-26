@@ -9,6 +9,7 @@ export const StudentsManager = () => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [className, setClassName] = useState('');
+  const [isActive, setIsActive] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [showImport, setShowImport] = useState(false);
   const [importJson, setImportJson] = useState('');
@@ -27,14 +28,14 @@ export const StudentsManager = () => {
   const handleSave = async () => {
     if (!code || !name) return;
     try {
-      const payload = { studentCode: code, fullName: name, email: email || "", className: className || "", isActive: true };
+      const payload = { studentCode: code, fullName: name, email: email || "", className: className || "", isActive: isActive };
       if (editingId) {
         await axios.put(`/api/students/${editingId}`, payload);
         setEditingId(null);
       } else {
         await axios.post('/api/students', payload);
       }
-      setCode(''); setName(''); setEmail(''); setClassName('');
+      setCode(''); setName(''); setEmail(''); setClassName(''); setIsActive(true);
       fetchStudents();
     } catch (e: any) {
       alert(e.response?.data || 'Failed to save student');
@@ -71,7 +72,7 @@ export const StudentsManager = () => {
           </div>
           <div className="flex gap-2 justify-end">
             <Button variant="secondary" onClick={() => setShowImport(true)}><Upload className="w-4 h-4 mr-2" /> Import JSON</Button>
-            {editingId && <Button variant="secondary" onClick={() => { setEditingId(null); setCode(''); setName(''); setEmail(''); setClassName(''); }}>Cancel</Button>}
+            {editingId && <Button variant="secondary" onClick={() => { setEditingId(null); setCode(''); setName(''); setEmail(''); setClassName(''); setIsActive(true); }}>Cancel</Button>}
             <Button variant="primary" onClick={handleSave}><Plus className="w-4 h-4 mr-2" /> {editingId ? 'Update Student' : 'Add Student'}</Button>
           </div>
         </div>
@@ -122,6 +123,7 @@ export const StudentsManager = () => {
                     setName(s.fullName);
                     setEmail(s.email || '');
                     setClassName(s.className || '');
+                    setIsActive(s.isActive ?? true);
                   }}>Edit</Button>
                 </td>
               </tr>

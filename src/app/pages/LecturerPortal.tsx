@@ -217,6 +217,8 @@ const BatchDetail = ({ currentUser, navigate }: { currentUser: any, navigate: an
   const [diffData, setDiffData] = useState<any>(null);
 
   const [consoleData, setConsoleData] = useState<{item: any, reportData: any} | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
+
 
   const fetchBatchDetail = async () => {
     try {
@@ -261,6 +263,7 @@ const BatchDetail = ({ currentUser, navigate }: { currentUser: any, navigate: an
       alert('Local Root Path is required to start grading.');
       return;
     }
+    setIsProcessing(true);
     try {
       if (batch.status === 'Assigned' || batch.status === 'NeedsCorrection') {
         await axios.post(`/api/grading-batches/${id}/start`);
@@ -276,15 +279,20 @@ const BatchDetail = ({ currentUser, navigate }: { currentUser: any, navigate: an
       fetchBatchDetail();
     } catch(e: any) {
       alert(typeof e.response?.data === 'object' ? JSON.stringify(e.response.data) : (e.response?.data || 'Failed to start grading'));
+    } finally {
+      setIsProcessing(false);
     }
   };
 
   const handleSubmitBatch = async () => {
+    setIsProcessing(true);
     try {
       await axios.post(`/api/grading-batches/${id}/submit`);
       fetchBatchDetail();
     } catch(e: any) {
       alert(typeof e.response?.data === 'object' ? JSON.stringify(e.response.data) : (e.response?.data || 'Failed to submit batch'));
+    } finally {
+      setIsProcessing(false);
     }
   };
 
@@ -316,6 +324,7 @@ const BatchDetail = ({ currentUser, navigate }: { currentUser: any, navigate: an
       alert("Local Root Path is required to retry.");
       return;
     }
+    setIsProcessing(true);
     try {
       // Notify Central BE to reset item status to Grading/LocalMatched
       await axios.post(`/api/grading-items/${itemId}/retry`);
@@ -328,6 +337,8 @@ const BatchDetail = ({ currentUser, navigate }: { currentUser: any, navigate: an
       alert('Retried item on Local Engine.');
     } catch(e: any) {
       alert(typeof e.response?.data === 'object' ? JSON.stringify(e.response.data) : (e.response?.data || 'Failed to retry'));
+    } finally {
+      setIsProcessing(false);
     }
   };
 
@@ -375,15 +386,17 @@ const BatchDetail = ({ currentUser, navigate }: { currentUser: any, navigate: an
                    localStorage.setItem('localRootPath', e.target.value);
                  }}
                />
-               <Button variant="primary" onClick={handleStartGrading}>
-                 {batch.status === 'Assigned' ? 'Start Grading' : 'Resume Grading'}
+               <Button variant="primary" onClick={handleStartGrading} state={isProcessing ? 'loading' : 'default'} disabled={isProcessing}>
+                 {isProcessing ? 'Processing...' : (batch.status === 'Assigned' ? 'Start Grading' : 'Resume Grading')}
                </Button>
             </div>
           )}
           {batch.status === 'InProgress' && (
-            <Button variant="primary" onClick={handleSubmitBatch}>Submit Batch</Button>
+            <Button variant="primary" onClick={handleSubmitBatch} state={isProcessing ? 'loading' : 'default'} disabled={isProcessing}>
+              {isProcessing ? 'Processing...' : 'Submit Batch'}
+            </Button>
           )}
-          <Button variant="secondary" onClick={handleExportExcel}>Export Excel</Button>
+          <Button variant="secondary" onClick={handleExportExcel} disabled={isProcessing}>Export Excel</Button>
         </div>
       </div>
 
@@ -406,18 +419,46 @@ const BatchDetail = ({ currentUser, navigate }: { currentUser: any, navigate: an
                         <span 
                           onClick={() => {
                             let violations = pAlert?.Violations || pAlert?.violations || [];
-                            if (violations.length === 0 && item.plagiarismReportJson) {
+                            let comparisons = [];
+                            if (item.plagiarismReportJson) {
                               try {
                                 const reportObj = JSON.parse(item.plagiarismReportJson);
-                                violations = reportObj.violations || reportObj.Violations || [];
+                                violations = reportObj.report?.violations || reportObj.report?.Violations || reportObj.violations || reportObj.Violations || violations;
+                                comparisons = reportObj.comparisons || reportObj.Comparisons || [];
                               } catch(e) {}
                             }
-                            const studentCodeStr = violations.length > 0 
-                                ? violations.map((v: any) => `File: ${v.FileName || v.fileName}\nLine: ${v.LineNumber || v.lineNumber}\n${v.CodeSnippet || v.codeSnippet}`).join('\n\n---\n\n') 
-                                : '';
-                            const matchedSourceStr = violations.length > 0 
-                                ? violations.map((v: any) => `Banned keyword: ${v.BannedKeyword || v.bannedKeyword}`).join('\n\n---\n\n') 
-                                : '';
+                            
+                            let studentCodeStr = '';
+                            let matchedSourceStr = '';
+
+                            if (violations.length > 0) {
+                                studentCodeStr += "--- BANNED KEYWORD VIOLATIONS ---\n\n";
+                                matchedSourceStr += "--- KEYWORD DETAILS ---\n\n";
+                                studentCodeStr += violations.map((v: any) => `File: ${v.FileName || v.fileName}\nLine: ${v.LineNumber || v.lineNumber}\n${v.CodeSnippet || v.codeSnippet}`).join('\n\n');
+                                matchedSourceStr += violations.map((v: any) => `Banned keyword: ${v.BannedKeyword || v.bannedKeyword}`).join('\n\n');
+                            }
+
+                            if (comparisons.length > 0) {
+                                if (studentCodeStr) {
+                                    studentCodeStr += '\n\n';
+                                    matchedSourceStr += '\n\n';
+                                }
+                                
+                                studentCodeStr += "--- SOURCE CODE SIMILARITY ---\n\n";
+                                matchedSourceStr += "--- MATCH DETAILS ---\n\n";
+
+                                comparisons.forEach((c: any) => {
+                                    const otherStudent = (c.StudentIdA || c.studentIdA) === item.studentCode ? (c.StudentIdB || c.studentIdB) : (c.StudentIdA || c.studentIdA);
+                                    studentCodeStr += `Trùng lặp mã nguồn với sinh viên: ${otherStudent}\n`;
+                                    matchedSourceStr += `Độ tương đồng: ${c.SimilarityScore || c.similarityScore}% (Trùng GUID: ${c.GuidMatched || c.guidMatched ? 'Có' : 'Không'})\n`;
+                                });
+                            }
+
+                            if (!studentCodeStr && !matchedSourceStr) {
+                                studentCodeStr = "Không có thông tin chi tiết.";
+                                matchedSourceStr = "Không có thông tin chi tiết.";
+                            }
+
                             setDiffData({ studentCode: studentCodeStr, matchedSource: matchedSourceStr });
                           }}
                           className="ml-2 cursor-pointer inline-flex items-center bg-red-100 text-red-800 text-[10px] font-bold px-2 py-0.5 rounded border border-red-200 hover:bg-red-200 transition-colors"
@@ -440,7 +481,7 @@ const BatchDetail = ({ currentUser, navigate }: { currentUser: any, navigate: an
                     <span className="text-xs text-gray-500 font-medium uppercase tracking-wider">Latest Score</span>
                     <div className="flex items-center space-x-2">
                       <button onClick={() => handleShowReport(item)} className="text-[10px] bg-gray-200 hover:bg-gray-300 text-gray-700 px-2 py-1 rounded">
-                        Report
+                        View
                       </button>
                       <span className="font-bold text-xl text-slate-900">{item.latestScore != null ? `${item.latestScore}/10` : '-/10'}</span>
                     </div>
@@ -454,9 +495,10 @@ const BatchDetail = ({ currentUser, navigate }: { currentUser: any, navigate: an
                        {(item.status.includes('Error') || item.status === 'ReturnedForCorrection') && isRetryable(item.lastErrorCode) ? (
                          <button 
                            onClick={() => handleRetryItem(item.id)}
-                           className="w-full bg-red-100 hover:bg-red-200 text-red-800 text-xs font-bold py-1.5 rounded-b border border-red-200 transition-colors"
+                           disabled={isProcessing}
+                           className={`w-full text-xs font-bold py-1.5 rounded-b border border-red-200 transition-colors ${isProcessing ? 'bg-gray-200 text-gray-500 cursor-not-allowed' : 'bg-red-100 hover:bg-red-200 text-red-800'}`}
                          >
-                           Retry Processing
+                           {isProcessing ? 'Processing...' : 'Retry Processing'}
                          </button>
                        ) : (
                          <div className="w-full bg-red-50 text-red-400 text-[10px] uppercase font-bold py-1 px-2 rounded-b border border-red-200 border-t-0 text-center">

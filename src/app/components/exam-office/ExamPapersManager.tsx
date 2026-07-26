@@ -17,6 +17,7 @@ export const ExamPapersManager = () => {
   const [forbidHardcoded, setForbidHardcoded] = useState(true);
   const [timeoutSeconds, setTimeoutSeconds] = useState(300);
   const [plagiarismKeywords, setPlagiarismKeywords] = useState('');
+  const [isActive, setIsActive] = useState(true);
   const [sections, setSections] = useState<any[]>([]);
 
   useEffect(() => {
@@ -41,12 +42,16 @@ export const ExamPapersManager = () => {
     setForbidHardcoded(p.forbidHardcodedConnectionString);
     setTimeoutSeconds(p.timeoutSeconds);
     setPlagiarismKeywords(p.plagiarismKeywords?.join(', ') || '');
+    setIsActive(p.isActive ?? true);
     setSections(p.sections || []);
   };
 
   const handleCancel = () => {
     setEditingPaper(null);
     setCode(''); setTitle(''); setSections([]);
+    setRubricVersion('1.0'); setMaxScore(10); setSolutionPattern('.*');
+    setRequireAppsettings(false); setForbidHardcoded(true); setTimeoutSeconds(300);
+    setPlagiarismKeywords(''); setIsActive(true);
   };
 
   const handleSave = async () => {
@@ -62,7 +67,7 @@ export const ExamPapersManager = () => {
           name: s.name, weight: s.weight, testFilter: s.testFilter, 
           testCasesJson: s.testCasesJson || "[]", apiProjectPath: s.apiProjectPath
         })),
-        isActive: true
+        isActive: isActive
       };
       if (editingPaper === 'NEW') {
         await axios.post('/api/exam-papers', payload);
@@ -101,6 +106,10 @@ export const ExamPapersManager = () => {
               <input type="checkbox" checked={forbidHardcoded} onChange={e => setForbidHardcoded(e.target.checked)} />
               <span>Forbid Hardcoded Connection String</span>
             </label>
+            <label className="flex items-center space-x-2 text-sm text-gray-700">
+              <input type="checkbox" checked={isActive} onChange={e => setIsActive(e.target.checked)} />
+              <span>Active</span>
+            </label>
           </div>
 
           <div className="mt-4 border-t pt-4">
@@ -134,7 +143,8 @@ export const ExamPapersManager = () => {
             <Button variant="primary" onClick={() => {
                setEditingPaper('NEW');
                setCode(''); setTitle(''); setMaxScore(10); setSections([]);
-               setSolutionPattern('.*'); setRequireAppsettings(true); setForbidHardcoded(true);
+               setSolutionPattern('.*'); setRequireAppsettings(false); setForbidHardcoded(true);
+               setRubricVersion('1.0'); setTimeoutSeconds(300); setPlagiarismKeywords(''); setIsActive(true);
             }}><Plus className="w-4 h-4 mr-2" /> Add Paper</Button>
           </div>
           <div className="p-0 flex-1 overflow-auto min-h-[400px]">
