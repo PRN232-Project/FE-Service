@@ -269,6 +269,24 @@ const RoomsManager = () => {
 const SessionsManagerStubPlaceholder = () => null; // Removed inside ExamOfficePortal since it is now imported
 
 const PlagiarismManager = () => {
+  const [cases, setCases] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchCases = async () => {
+    try {
+      const res = await axios.get('/api/grading-items/plagiarism-cases');
+      setCases(res.data);
+    } catch (e) {
+      console.error('Failed to fetch plagiarism cases', e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchCases();
+  }, []);
+
   return (
     <div className="bg-white rounded-xl shadow-md ring-1 ring-gray-100 overflow-hidden flex flex-col max-w-6xl">
        <div className="p-6 border-b border-gray-200 bg-red-50 flex items-center">
@@ -278,9 +296,57 @@ const PlagiarismManager = () => {
            <p className="text-sm text-red-600">Review suspected plagiarism cases across all exam sessions</p>
          </div>
        </div>
-       <div className="p-12 text-center text-gray-500">
-         <AlertTriangle className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-         <p>Plagiarism reports will appear here when an alert is triggered by the Plagiarism Service.</p>
+       <div className="p-0 flex-1 overflow-auto min-h-[400px]">
+         {loading ? (
+           <div className="p-12 text-center text-gray-500">Loading cases...</div>
+         ) : cases.length === 0 ? (
+           <div className="p-12 text-center text-gray-500">
+             <AlertTriangle className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+             <p>No plagiarism cases found.</p>
+           </div>
+         ) : (
+           <table className="w-full text-sm text-left text-gray-600">
+             <thead className="text-xs text-gray-500 uppercase bg-white border-b border-gray-200">
+               <tr>
+                 <th className="px-6 py-4">Student</th>
+                 <th className="px-6 py-4">Session</th>
+                 <th className="px-6 py-4 text-center">Banned Keywords</th>
+                 <th className="px-6 py-4 text-center">Max Similarity</th>
+                 <th className="px-6 py-4 text-right">Checked At</th>
+               </tr>
+             </thead>
+             <tbody>
+               {cases.map((c: any) => (
+                 <tr key={c.id} className="bg-white border-b border-gray-100 hover:bg-gray-50">
+                   <td className="px-6 py-3">
+                     <div className="font-medium text-gray-900">{c.studentCode}</div>
+                     <div className="text-xs text-gray-500">{c.studentName}</div>
+                   </td>
+                   <td className="px-6 py-3 font-medium text-gray-800">{c.sessionCode}</td>
+                   <td className="px-6 py-3 text-center">
+                     {c.plagiarismViolationCount > 0 ? (
+                       <span className="text-red-600 font-bold">{c.plagiarismViolationCount}</span>
+                     ) : (
+                       <span className="text-gray-400">0</span>
+                     )}
+                   </td>
+                   <td className="px-6 py-3 text-center">
+                     {c.plagiarismMaxSimilarity > 0 ? (
+                       <span className={`font-bold ${c.plagiarismMaxSimilarity >= 80 ? 'text-red-600' : 'text-orange-500'}`}>
+                         {c.plagiarismMaxSimilarity.toFixed(2)}%
+                       </span>
+                     ) : (
+                       <span className="text-gray-400">-</span>
+                     )}
+                   </td>
+                   <td className="px-6 py-3 text-right text-gray-500">
+                     {c.plagiarismCheckedAtUtc ? new Date(c.plagiarismCheckedAtUtc).toLocaleString() : '-'}
+                   </td>
+                 </tr>
+               ))}
+             </tbody>
+           </table>
+         )}
        </div>
     </div>
   );

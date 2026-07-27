@@ -15,9 +15,26 @@ axios.interceptors.response.use(
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
       try {
-        await axios.post('/api/auth/refresh');
+        const refreshToken = localStorage.getItem('refreshToken');
+        if (!refreshToken) throw new Error('No refresh token');
+        
+        const res = await axios.post('/api/auth/refresh', 
+          { refreshToken },
+          { headers: { 'Content-Type': 'application/json' } }
+        );
+        const data = res.data;
+        
+        localStorage.setItem('accessToken', data.accessToken);
+        if (data.refreshToken) localStorage.setItem('refreshToken', data.refreshToken);
+        axios.defaults.headers.common['Authorization'] = `Bearer ${data.accessToken}`;
+        
+        originalRequest.headers['Authorization'] = `Bearer ${data.accessToken}`;
         return axios(originalRequest);
       } catch (err) {
+        localStorage.removeItem('currentUser');
+        localStorage.removeItem('accessToken');
+        localStorage.removeItem('refreshToken');
+        delete axios.defaults.headers.common['Authorization'];
         window.location.href = '/';
       }
     }
