@@ -281,8 +281,7 @@ const BatchDetail = ({ currentUser, navigate }: { currentUser: any, navigate: an
       const executionPackage = { ...pkgRes.data };
       executionPackage.centralApiBaseUrl = 'http://exam_account_service:8080';
 
-      // POST to Engine local
-      await axios.post('http://localhost:5174/api/local-grading/run-batch', {
+      await axios.post('/api/local-grading/run-batch', {
         localRootPath,
         executionPackage
       });
@@ -345,7 +344,7 @@ const BatchDetail = ({ currentUser, navigate }: { currentUser: any, navigate: an
       const executionPackage = { ...pkgRes.data };
       executionPackage.centralApiBaseUrl = 'http://exam_account_service:8080';
 
-      await axios.post('http://localhost:5174/api/local-grading/run-batch', {
+      await axios.post('/api/local-grading/run-batch', {
         localRootPath,
         executionPackage // In reality, we might filter to run only this item, but Engine handles retry
       });
