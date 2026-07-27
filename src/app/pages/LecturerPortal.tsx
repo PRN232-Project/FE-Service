@@ -154,6 +154,16 @@ const ConsoleModal = ({ item, reportData, onClose }: { item: any, reportData: an
                     </ul>
                   </div>
                 )}
+                {!parsedReport.band0Passed && parsedReport.buildErrors?.length > 0 && (
+                  <div className="text-red-400 ml-4 whitespace-pre-wrap">
+                    [ERROR] Structure Violations:
+                    <ul className="list-disc ml-8 mt-1">
+                      {Array.isArray(parsedReport.buildErrors)
+                        ? parsedReport.buildErrors.map((e: string, i: number) => <li key={i}>{e}</li>)
+                        : <li>{parsedReport.buildErrors}</li>}
+                    </ul>
+                  </div>
+                )}
                 <div className={parsedReport.band0Passed ? "text-green-400 ml-4" : "text-red-400 ml-4"}>
                   [RESULT] Band 0 {parsedReport.band0Passed ? 'Passed' : 'Failed'}
                 </div>
@@ -161,10 +171,14 @@ const ConsoleModal = ({ item, reportData, onClose }: { item: any, reportData: an
                 {parsedReport.band0Passed && (
                   <>
                     <div className="text-slate-300 mt-4">{'>> Compiling Solution (Band 1)'}</div>
-                    {parsedReport.buildErrors && (
+                    {parsedReport.buildErrors?.length > 0 && (
                       <div className="text-red-400 ml-4 whitespace-pre-wrap">
                         [ERROR] Build Log:
-                        {"\n" + parsedReport.buildErrors}
+                        <ul className="list-disc ml-8 mt-1">
+                          {Array.isArray(parsedReport.buildErrors)
+                            ? parsedReport.buildErrors.map((e: string, i: number) => <li key={i}>{e}</li>)
+                            : <li>{parsedReport.buildErrors}</li>}
+                        </ul>
                       </div>
                     )}
                     <div className={parsedReport.band1Passed ? "text-green-400 ml-4" : "text-red-400 ml-4"}>

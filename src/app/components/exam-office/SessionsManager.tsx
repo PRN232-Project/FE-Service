@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Plus, CheckCircle, Users } from 'lucide-react';
+import { Plus, CheckCircle, Users, Trash2 } from 'lucide-react';
 import { Button, Input } from '../shared-ui';
 
 export const SessionsManager = () => {
@@ -89,6 +89,16 @@ export const SessionsManager = () => {
       fetchSessions();
     } catch(e: any) {
       alert(e.response?.data || 'Failed to mark ready');
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!window.confirm('Are you sure you want to delete this session?')) return;
+    try {
+      await axios.delete(`/api/exam-sessions/${id}`);
+      fetchSessions();
+    } catch (e: any) {
+      alert(e.response?.data || 'Failed to delete session');
     }
   };
 
@@ -190,13 +200,21 @@ export const SessionsManager = () => {
                 <td className="px-6 py-3">{s.examPaperCode}</td>
                 <td className="px-6 py-3">{new Date(s.scheduledAtUtc).toLocaleString()}</td>
                 <td className="px-6 py-3 font-bold">{s.status}</td>
-                <td className="px-6 py-3 space-x-2">
+                <td className="px-6 py-3 space-x-2 flex items-center h-full">
                   <Button variant="secondary" className="text-xs px-2 py-1" onClick={() => handleOpenCandidates(s)}><Users className="w-3 h-3 mr-1" /> Candidates ({s.candidateCount})</Button>
                   {s.status === 'Draft' && s.candidateCount > 0 && (
                     <Button variant="primary" className="text-xs px-2 py-1 bg-green-600 hover:bg-green-700 text-white" onClick={() => handleMarkReady(s.id)}>
                       <CheckCircle className="w-3 h-3 mr-1" /> Ready
                     </Button>
                   )}
+                  <button 
+                    type="button"
+                    className="text-red-500 hover:text-red-700 p-1 ml-2" 
+                    title="Delete Session"
+                    onClick={() => handleDelete(s.id)}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
                 </td>
               </tr>
             ))}

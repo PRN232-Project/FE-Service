@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Plus, CheckSquare, Square } from 'lucide-react';
+import { Plus, CheckSquare, Square, Trash2 } from 'lucide-react';
 import { Button, Input } from '../shared-ui';
 
 import { useNavigate } from 'react-router';
@@ -75,6 +75,16 @@ export const BatchesManager = () => {
       fetchBatches();
     } catch(e: any) {
       alert(e.response?.data || 'Failed to create batch');
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!window.confirm('Are you sure you want to delete this grading batch?')) return;
+    try {
+      await axios.delete(`/api/grading-batches/${id}`);
+      fetchBatches();
+    } catch (e: any) {
+      alert(e.response?.data || 'Failed to delete batch');
     }
   };
 
@@ -187,8 +197,16 @@ export const BatchesManager = () => {
                 <td className="px-6 py-3">
                   <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs font-bold">{b.status}</span>
                 </td>
-                <td className="px-6 py-3 space-x-2">
+                <td className="px-6 py-3 space-x-2 flex items-center h-full">
                   <Button variant="secondary" className="text-xs px-2 py-1" onClick={(e) => { e.stopPropagation(); handleExportExcel(b.id); }}>Export Excel</Button>
+                  <button 
+                    type="button"
+                    className="text-red-500 hover:text-red-700 p-1 ml-2" 
+                    title="Delete Batch"
+                    onClick={(e) => { e.stopPropagation(); handleDelete(b.id); }}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
                 </td>
               </tr>
             ))}

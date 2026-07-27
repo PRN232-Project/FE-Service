@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { Plus, Trash2 } from 'lucide-react';
 import { Button, Input } from '../shared-ui';
@@ -6,6 +6,7 @@ import { Button, Input } from '../shared-ui';
 export const ExamPapersManager = () => {
   const [papers, setPapers] = useState<any[]>([]);
   const [editingPaper, setEditingPaper] = useState<any>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Form State
   const [code, setCode] = useState('');
@@ -81,11 +82,78 @@ export const ExamPapersManager = () => {
     }
   };
 
+  const handleDelete = async (id: string) => {
+    if (!window.confirm('Are you sure you want to delete this exam paper?')) return;
+    try {
+      await axios.delete(`/api/exam-papers/${id}`);
+      fetchPapers();
+    } catch (e: any) {
+      alert(e.response?.data || 'Failed to delete exam paper');
+    }
+  };
+
+  const handleExportJson = () => {
+    const payload = {
+      code, title, rubricVersion, maxScore, solutionPattern,
+      requireAppSettings: requireAppsettings,
+      forbidHardcodedConnectionString: forbidHardcoded,
+      timeoutSeconds,
+      plagiarismKeywords: plagiarismKeywords.split(',').map(s => s.trim()).filter(s => s),
+      sections: sections.map(s => ({
+        name: s.name, weight: s.weight, testFilter: s.testFilter, 
+        testCasesJson: s.testCasesJson || "[]", apiProjectPath: s.apiProjectPath
+      })),
+      isActive: isActive
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${code || 'ExamPaper'}_Config.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleImportJson = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const data = JSON.parse(event.target?.result as string);
+        if (data.code !== undefined) setCode(data.code);
+        if (data.title !== undefined) setTitle(data.title);
+        if (data.rubricVersion !== undefined) setRubricVersion(data.rubricVersion);
+        if (data.maxScore !== undefined) setMaxScore(data.maxScore);
+        if (data.solutionPattern !== undefined) setSolutionPattern(data.solutionPattern);
+        if (typeof data.requireAppSettings === 'boolean') setRequireAppsettings(data.requireAppSettings);
+        if (typeof data.forbidHardcodedConnectionString === 'boolean') setForbidHardcoded(data.forbidHardcodedConnectionString);
+        if (data.timeoutSeconds !== undefined) setTimeoutSeconds(data.timeoutSeconds);
+        if (data.plagiarismKeywords && Array.isArray(data.plagiarismKeywords)) setPlagiarismKeywords(data.plagiarismKeywords.join(', '));
+        if (data.sections && Array.isArray(data.sections)) setSections(data.sections);
+        if (typeof data.isActive === 'boolean') setIsActive(data.isActive);
+      } catch (err) {
+        alert('Invalid JSON file format');
+      }
+    };
+    reader.readAsText(file);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
   return (
     <div className="bg-white rounded-xl shadow-md ring-1 ring-gray-100 overflow-hidden flex flex-col max-w-6xl">
       {editingPaper ? (
         <div className="p-6 border-b border-gray-200 bg-gray-50 flex flex-col gap-6">
-          <h3 className="text-lg font-bold">{editingPaper === 'NEW' ? 'Create Exam Paper' : 'Edit Exam Paper'}</h3>
+          <div className="flex justify-between items-center">
+            <h3 className="text-lg font-bold">{editingPaper === 'NEW' ? 'Create Exam Paper' : 'Edit Exam Paper'}</h3>
+            <div className="flex items-center gap-2">
+              <input type="file" accept=".json" ref={fileInputRef} onChange={handleImportJson} className="hidden" />
+              <Button variant="secondary" className="text-xs" onClick={() => fileInputRef.current?.click()}>Import JSON</Button>
+              <Button variant="secondary" className="text-xs" onClick={handleExportJson}>Export JSON</Button>
+            </div>
+          </div>
           
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <Input label="Code" value={code} onChange={(e) => setCode(e.target.value)} />
@@ -187,8 +255,16 @@ export const ExamPapersManager = () => {
                     <td className="px-6 py-3">{p.title}</td>
                     <td className="px-6 py-3">{p.maxScore}</td>
                     <td className="px-6 py-3">{p.sections?.length || 0}</td>
-                    <td className="px-6 py-3 space-x-2">
+                    <td className="px-6 py-3 space-x-2 flex items-center h-full">
                       <Button variant="secondary" className="text-xs px-2 py-1" onClick={() => handleEdit(p)}>Edit</Button>
+                      <button 
+                        type="button"
+                        className="text-red-500 hover:text-red-700 p-1" 
+                        title="Delete Paper"
+                        onClick={() => handleDelete(p.id)}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
                     </td>
                   </tr>
                 ))}
