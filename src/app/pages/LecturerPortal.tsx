@@ -212,7 +212,7 @@ const ConsoleModal = ({ item, reportData, onClose }: { item: any, reportData: an
 const BatchDetail = ({ currentUser, navigate }: { currentUser: any, navigate: any }) => {
   const { id } = useParams();
   const [batch, setBatch] = useState<any>(null);
-  const [localRootPath, setLocalRootPath] = useState(localStorage.getItem('localRootPath') || 'D:\\Kỳ_8\\PRN232\\PRN_ASM\\System-Repo-master\\All Engine\\Engine_Service\\sample-student-submission');
+  const [localRootPath, setLocalRootPath] = useState(localStorage.getItem('localRootPath') || '/app/sample-student-submission');
   const { connect, joinExamGroup, leaveExamGroup, progressUpdates, plagiarismAlerts } = useSignalRStore();
   const [diffData, setDiffData] = useState<any>(null);
 
