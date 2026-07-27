@@ -245,6 +245,14 @@ const BatchDetail = ({ currentUser, navigate }: { currentUser: any, navigate: an
   };
 
   useEffect(() => {
+    // Automatically correct Windows-style paths to the docker container path
+    if (localRootPath && (localRootPath.includes('\\') || /^[a-zA-Z]:/.test(localRootPath))) {
+      setLocalRootPath('/app/sample-student-submission');
+      localStorage.setItem('localRootPath', '/app/sample-student-submission');
+    }
+  }, [localRootPath]);
+
+  useEffect(() => {
     fetchBatchDetail();
     connect();
   }, [id]);
