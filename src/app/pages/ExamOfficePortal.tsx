@@ -36,7 +36,7 @@ export const ExamOfficePortal = ({ currentUser }: { currentUser: any }) => {
 
   useEffect(() => {
     const connection = new HubConnectionBuilder()
-      .withUrl('http://localhost:5176/gradingHub') // Notification Service Hub
+      .withUrl('/gradingHub') // Notification Service Hub
       .withAutomaticReconnect()
       .build();
     

@@ -28,7 +28,7 @@ export const useSignalRStore = create<SignalRState>((set, get) => ({
     }
 
     const connection = new HubConnectionBuilder()
-      .withUrl('http://localhost:5176/gradingHub')
+      .withUrl('/gradingHub')
       .withAutomaticReconnect()
       .build();
 
