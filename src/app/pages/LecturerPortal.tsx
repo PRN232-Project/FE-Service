@@ -278,10 +278,13 @@ const BatchDetail = ({ currentUser, navigate }: { currentUser: any, navigate: an
       }
       const pkgRes = await axios.post(`/api/grading-batches/${id}/execution-package`);
       
+      const executionPackage = { ...pkgRes.data };
+      executionPackage.centralApiBaseUrl = 'http://exam_account_service:8080';
+
       // POST to Engine local
       await axios.post('http://localhost:5174/api/local-grading/run-batch', {
         localRootPath,
-        executionPackage: pkgRes.data
+        executionPackage
       });
       alert('Local grading started successfully.');
       fetchBatchDetail();
@@ -338,9 +341,13 @@ const BatchDetail = ({ currentUser, navigate }: { currentUser: any, navigate: an
       await axios.post(`/api/grading-items/${itemId}/retry`);
       
       const pkgRes = await axios.post(`/api/grading-batches/${id}/execution-package`);
+      
+      const executionPackage = { ...pkgRes.data };
+      executionPackage.centralApiBaseUrl = 'http://exam_account_service:8080';
+
       await axios.post('http://localhost:5174/api/local-grading/run-batch', {
         localRootPath,
-        executionPackage: pkgRes.data // In reality, we might filter to run only this item, but Engine handles retry
+        executionPackage // In reality, we might filter to run only this item, but Engine handles retry
       });
       alert('Retried item on Local Engine.');
     } catch(e: any) {
