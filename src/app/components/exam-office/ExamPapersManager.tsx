@@ -118,15 +118,37 @@ export const ExamPapersManager = () => {
               <Button variant="secondary" className="text-xs" onClick={() => setSections([...sections, { name: '', weight: 0, testFilter: '', testCasesJson: '[]' }])}>+ Add Section</Button>
             </div>
             {sections.map((s, idx) => (
-              <div key={idx} className="flex gap-2 items-end mb-2 p-3 bg-white border border-gray-200 rounded">
-                <div className="flex-1 grid grid-cols-5 gap-2">
+              <div key={idx} className="mb-4 p-4 bg-white border border-gray-200 rounded-lg shadow-sm flex flex-col gap-3">
+                <div className="flex justify-between items-center border-b pb-2 mb-1">
+                  <span className="text-sm font-semibold text-gray-700">Section #{idx + 1}</span>
+                  <button 
+                    type="button"
+                    className="text-red-500 hover:text-red-700 flex items-center gap-1 text-xs" 
+                    onClick={() => { const newS = [...sections]; newS.splice(idx, 1); setSections(newS); }}
+                  >
+                    <Trash2 className="w-3.5 h-3.5" /> Remove Section
+                  </button>
+                </div>
+                
+                {/* Section Details Row */}
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
                   <Input label="Name" value={s.name} onChange={e => { const newS = [...sections]; newS[idx].name = e.target.value; setSections(newS); }} />
                   <Input label="Weight" type="number" value={s.weight} onChange={e => { const newS = [...sections]; newS[idx].weight = Number(e.target.value); setSections(newS); }} />
                   <Input label="Test Filter" value={s.testFilter} onChange={e => { const newS = [...sections]; newS[idx].testFilter = e.target.value; setSections(newS); }} />
                   <Input label="API Path (optional)" value={s.apiProjectPath || ''} onChange={e => { const newS = [...sections]; newS[idx].apiProjectPath = e.target.value; setSections(newS); }} />
-                  <Input label="Test Cases (JSON)" value={s.testCasesJson || '[]'} onChange={e => { const newS = [...sections]; newS[idx].testCasesJson = e.target.value; setSections(newS); }} />
                 </div>
-                <button className="text-red-500 hover:text-red-700 p-2" onClick={() => { const newS = [...sections]; newS.splice(idx, 1); setSections(newS); }}><Trash2 className="w-4 h-4" /></button>
+                
+                {/* Dedicated Test Cases JSON Area */}
+                <div className="flex flex-col gap-1 mt-1">
+                  <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Test Cases (JSON)</label>
+                  <textarea
+                    className="w-full p-2.5 border border-gray-300 rounded font-mono text-xs focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-gray-50 text-gray-800"
+                    rows={8}
+                    placeholder="Enter test cases array in JSON format..."
+                    value={s.testCasesJson || '[]'}
+                    onChange={e => { const newS = [...sections]; newS[idx].testCasesJson = e.target.value; setSections(newS); }}
+                  />
+                </div>
               </div>
             ))}
           </div>
